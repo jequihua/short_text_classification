@@ -1,0 +1,8 @@
+statistics,values
+Accuracy,0.8509955637721143
+Kappa,0.8349036359245237
+AccuracyLower,0.8496716420876432
+AccuracyUpper,0.8523122211292521
+AccuracyNull,0.1835984482124821
+AccuracyPValue,0
+McnemarPValue,NaN
