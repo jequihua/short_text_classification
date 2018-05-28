@@ -69,5 +69,3 @@ full_table$Destino = iconv(get("content", corpus), to='ASCII//TRANSLIT')
 
 # save as RData
 save(full_table, file="./data/full_corpus.RData")
-
-head(full_table)

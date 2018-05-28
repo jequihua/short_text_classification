@@ -9,9 +9,10 @@ library("skmeans")
 library("slam")
 library("xgboost")
 library("caret")
+library("dummies")
 
 # load full_table
-#load("./data/full_table.RData")
+load("./data/full_corpus.RData")
 
 # class counts imbalanced and a little bit dirty
 table(full_table$Tipo)
@@ -20,10 +21,25 @@ table(full_table$Tipo)
 full_table$Tipo[full_table$Tipo=="au"]="AU"
 full_table$Tipo[full_table$Tipo=="ed"]="ED"
 full_table$Tipo[full_table$Tipo=="re"]="RE"
+full_table$Tipo[full_table$Tipo=="S"]="SA"
 
 # create numerical dependent variable for classification
 # as we will use XGBOOST classes must begin at 0
 full_table$target = as.numeric(as.factor(full_table$Tipo))-1
+
+# clean "Estado" variable
+
+length(table(full_table$Estado))
+
+full_table$Estado[full_table$Estado=="Veracruz"]="Veracruz de Ignacio de la Llave"
+full_table$Estado[full_table$Estado=="Michoacán"]="Michoacán de Ocampo"
+full_table$Estado[full_table$Estado=="AGS"]="Aguascalientes"
+full_table$Estado[full_table$Estado=="Quintana Roo."]="Quintana Roo"
+full_table$Estado[full_table$Estado=="Distrito Federal"]="Ciudad de México"
+full_table$Estado[full_table$Estado=="Coahuila"]="Coahuila de Zaragoza"
+
+# make dummy variables from "Estado"
+dummies_matrix = dummy(full_table$Estado,sep="_")
 
 ### build model training data table
 
@@ -46,16 +62,33 @@ tfidf = TfIdf$new()
 ### fit the model to data and transform it with the fitted model
 dtm_tfidf = fit_transform(dtm, tfidf)
 
+# add estado dummies to matrix
+dtm_tfidf = cbind(dtm_tfidf,dummies_matrix)
+
 # split into unlabeled and labeled feature matrix
 labeled_matrix = dtm_tfidf[!is.na(full_table$Tipo),] 
 unlabeled_matrix = dtm_tfidf[is.na(full_table$Tipo),] 
 
+total_clean = as.matrix(full_table$Total)
+total_clean = total_clean[!is.na(full_table$Tipo)]
+
+labeled_matrix_gasto = cbind(labeled_matrix,total_clean)
+labeled_matrix_gasto = labeled_matrix_gasto[total_clean!=0,]
+
+labels = full_table$target[!is.na(full_table$Tipo)]
+labels = labels[total_clean!=0]
+
+sample_idx = sample_class_matrix(labeled_matrix_gasto,labels,500)
+
+labeled_matrix_gasto_s = labeled_matrix_gasto[sample_idx,]
+labels_s = labels[sample_idx]
+
 # build XGBoost matrix for training
-final_data_matrix = xgb.DMatrix(data = labeled_matrix,
-                                 label = full_table$target[!is.na(full_table$Tipo)])
+final_data_matrix = xgb.DMatrix(data = labeled_matrix_gasto,
+                                 label = labels)
 
 # number of classes
-length(table(full_table$target[!is.na(full_table$Tipo)]))
+length(table(labels_s))
 
 ### train model
 
@@ -80,19 +113,26 @@ cv_model = xgb.cv(params = xgb_params,
                    verbose = FALSE,
                    prediction = TRUE)
 
+
+
 #print(difftime(Sys.time(), t1, units = 'mins'))
 
 # Out Of Fold prediction
 OOF_prediction = cv_model$pred
 OOF_prediction = max.col(OOF_prediction)-1
 
+true_labels = labels_s
+
+
+
+                 
 # confusion matrix and error metrics
-confusion_matrix = confusionMatrix(factor(full_table$target[!is.na(full_table$Tipo)]), 
+confusion_matrix = confusionMatrix(factor(labels), 
                    factor(OOF_prediction),
                    mode = "everything")
 
+confusion_matrix
 
-names(confusion_matrix)
 
 # write to disk
 write_csv(as.data.frame.matrix(confusion_matrix$table),"./evaluation_stats/confusion_matrix.csv")
@@ -103,3 +143,12 @@ write_csv(data.frame(statistics=names(confusion_matrix$overall),
 write_csv(as.data.frame.matrix(confusion_matrix$byClass),"./evaluation_stats/byClass_accuracies.csv")
 
 
+# save full model and calculate var importance
+
+xgboost_model_v1 <- xgb.train(data=final_data_matrix, xgb_params, nrounds=nround)
+
+xgb.save(xgboost_model_v1,'./models/xgboost_model_v1.model')
+
+importance <- xgb.importance(feature_names = labeled_matrix_gasto@Dimnames[[2]], model = xgboost_model_v1)
+
+View(importance)
