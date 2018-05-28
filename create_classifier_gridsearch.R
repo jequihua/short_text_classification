@@ -81,14 +81,14 @@ labeled_matrix_gasto = labeled_matrix_gasto[total_clean!=0,]
 labels = full_table$target[!is.na(full_table$Tipo)]
 labels = labels[total_clean!=0]
 
-sample_idx = sample_class_matrix(labeled_matrix_gasto,labels,100)
+#sample_idx = sample_class_matrix(labeled_matrix_gasto,labels,100)
 
-labeled_matrix_gasto_s = labeled_matrix_gasto[sample_idx,]
-labels_s = labels[sample_idx]
+#labeled_matrix_gasto_s = labeled_matrix_gasto[sample_idx,]
+#labels_s = labels[sample_idx]
 
 # build XGBoost matrix for training
-final_data_matrix = xgb.DMatrix(data = labeled_matrix_gasto_s,
-                                 label = labels_s)
+final_data_matrix = xgb.DMatrix(data = labeled_matrix_gasto,
+                                 label = labels)
 
 ### grid search
 
@@ -99,7 +99,7 @@ eval_metric_list = list()
 eval_metric_list_idx = list()
 seed_number_list = list()
 
-for (iter in 1:2000) {
+for (iter in 1:1000) {
 
   print(iter)
   
