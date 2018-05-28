@@ -10,6 +10,8 @@ library("xgboost")
 #library("caret")
 library("dummies")
 
+# loud source functions
+source("./tools.R")
 
 # load full_table
 load("./data/full_corpus.RData")
