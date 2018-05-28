@@ -130,7 +130,7 @@ for (iter in 1:1000) {
                  verbose = FALSE,
                  early_stopping_rounds=10,
                  maximize=FALSE,
-                 prediction = TRUE)
+                 prediction = FALSE)
 
   min_logloss = min(mdcv$evaluation_log$train_mlogloss_mean)
   
