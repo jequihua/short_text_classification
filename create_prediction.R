@@ -19,6 +19,9 @@ source("./tools.R")
 # load full_table
 load("./data/full_corpus_shuffled.RData")
 
+# separate unlabeled data for later
+unlabeled_table = full_table[is.na(full_table$Tipo),]
+
 # class names and codes
 class_names = names(table(full_table$Tipo))
 class_ids = names(table(full_table$target))
@@ -69,12 +72,6 @@ total_clean = total_clean[!is.na(full_table$Tipo)]
 labels = full_table$target[!is.na(full_table$Tipo)]
 labels = labels[total_clean!=0]
 
-total_clean = as.matrix(full_table$Total)
-total_clean = total_clean[is.na(full_table$Tipo)]
-
-unlabeled_matrix_gasto = cbind(unlabeled_matrix,total_clean)
-unlabeled_matrix_gasto = unlabeled_matrix_gasto[total_clean!=0,]
-
 # load model (CV results and trained model)
 load(file='./models/xgboost_model_cvresults_v8.model')
 xgb_model = xgb.load('./models/xgboost_model_v8.model')
@@ -106,7 +103,7 @@ for(i in 1:length(unique(labels)))
   labels_aux[label_idx]=1
   labels_aux[!label_idx]=0
   
-  OOF_prediction_prob_aux = cv_model$pred[,1]
+  OOF_prediction_prob_aux = cv_model$pred[,i]
   
   OOF_roc <- roc(labels_aux, 
                  OOF_prediction_prob_aux)
@@ -117,11 +114,11 @@ for(i in 1:length(unique(labels)))
                       threshold=OOF_roc$thresholds)
   
   # set 99 threshold
-  roc_df_subset = roc_df[roc_df$Spec>=0.99,]
+  roc_df_subset = roc_df[roc_df$Spec>=0.999,]
   thresholds_df[i,"threshold_Spec99"] = roc_df_subset$threshold[which.max(roc_df_subset$SumSpecSens)]
   
   # set 95 threshold
-  roc_df_subset = roc_df[roc_df$Spec>=0.95,]
+  roc_df_subset = roc_df[roc_df$Spec>=0.99,]
   thresholds_df[i,"threshold_Spec95"] = roc_df_subset$threshold[which.max(roc_df_subset$SumSpecSens)]
   
   # plot roc
@@ -133,57 +130,63 @@ for(i in 1:length(unique(labels)))
   
 }
 
+
+##### prediction
+
+unlabeled_matrix = dtm_tfidf[is.na(full_table$Tipo),] 
+
+total_clean = as.matrix(full_table$Total)
+total_clean = total_clean[is.na(full_table$Tipo)]
+
+unlabeled_matrix_gasto = cbind(unlabeled_matrix,total_clean)
+#unlabeled_matrix_gasto = unlabeled_matrix_gasto[total_clean!=0,]
+
+pred <- predict(xgb_model,unlabeled_matrix_gasto)
+
+
+pred_matrix <- matrix(pred, nrow = 32, ncol = length(pred) / 32) %>% 
+               t() %>%
+               data.frame() 
+
+Final_prediction = max.col(pred_matrix)-1
+Final_prediction_prob = rowMaxs(as.matrix(pred_matrix),value=TRUE)
+
+unlabeled_table$pred_proba = Final_prediction_prob
+unlabeled_table$pred_id = Final_prediction
+unlabeled_table$pred_Tipo = ""
+unlabeled_table$pred_confianza = 0
+unlabeled_table$row_id_original = cvresults$idx_shuffled[is.na(full_table$Tipo)]
+
+head(thresholds_df$class)
+
+for (i in 1:nrow(thresholds_df))
+{
+  print(i)
+  
+  class_id = thresholds_df$class_id[i]
+  
+  class_ = thresholds_df$class[i]
+  
+  unlabeled_table$pred_Tipo[unlabeled_table$pred_id==class_id]=class_
+  
+  # assign confidence level
+  unlabeled_table$pred_confianza[(unlabeled_table$pred_id==class_id)&(unlabeled_table$pred_proba>thresholds_df$threshold_Spec95[i])]=1
+  unlabeled_table$pred_confianza[(unlabeled_table$pred_id==class_id)&(unlabeled_table$pred_proba>thresholds_df$threshold_Spec99[i])]=2
+}
+
 View(thresholds_df)
 
-head(cv_model$pred)
+table(unlabeled_table$pred_confianza)
 
-OOF_prediction_prob = rowMaxs(cv_model$pred,value=TRUE)
+table(unlabeled_table$pred_Tipo)
+table(full_table$Tipo)
 
-label_idx = labels == 1 
+# save as RData
+save(unlabeled_table, file="./data/unlabeled_table_prediction_v1.RData")
 
-remove(labels_subset)
+load("./data/unlabeled_table_prediction_v1.RData")
 
-labels_aux = labels[label_idx]
-labels_oof_aux = OOF_prediction[label_idx]
-pred_oof_aux = OOF_prediction_prob[label_idx]
+# save a csv
+write_csv(unlabeled_table,"./data/unlabeled_table_prediction_v1.csv")
 
-correct = pred_oof_aux[labels_oof_aux==0]
-incorrect = pred_oof_aux[labels_oof_aux!=0]
-
-median(correct)
-median(incorrect)
-
-hist(correct,n=30)
-hist(incorrect,n=30)
-
-length(incorrect[incorrect>=0.3])
-
-table(labels_aux,labels_oof_aux)
-
-832/length(labels_aux)
-
-labels_aux = labels[label_idx]
-
-labels_aux[label_idx]=1
-labels_aux[!label_idx]=0
-
-OOF_prediction_prob_aux = cv_model$pred[,1]
-
-OOF_roc <- roc(labels_aux, 
-            OOF_prediction_prob_aux)
-
-?roc
-
-roc_df = data.frame(Spec=OOF_roc$specificities,
-                    Sens=OOF_roc$sensitivities,
-                    SumSpecSens=OOF_roc$specificities+OOF_roc$sensitivities,
-                    threshold=OOF_roc$thresholds)
-
-roc_df_subset = roc_df[roc_df$Sens>=0.99,]
-
-opt_threshold = roc_df_subset$threshold[which.max(roc_df_subset$SumSpecSens)]
-
-opt_threshold
-
-head(roc_df_subset)
-
+head(unlabeled_table)
