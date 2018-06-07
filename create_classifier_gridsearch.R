@@ -117,7 +117,7 @@ for (iter in 1:1000) {
                 max_delta_step = sample(1:10, 1)
   )
   
-  cv.nround = 200
+  cv.nround = 300
   cv.nfold = 10
   
   seed.number = sample.int(10000, 1)[[1]]
@@ -157,3 +157,4 @@ save(final_list, file="./grid_search_results/grid_search_v1_mlogloss.RData")
 #set.seed(best_seednumber)
 #md <- xgb.train(data=dtrain, params=best_param, nrounds=nround)
 
+?xgb.train
