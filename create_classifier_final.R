@@ -21,7 +21,6 @@ set.seed=666
 
 # shuffle rows
 shuffled_list = shuffle_df(full_table,seed=666)
-
 full_table = shuffled_list$shuffled_df
 
 # class counts imbalanced and a little bit dirty
@@ -38,9 +37,6 @@ full_table$Tipo[full_table$Tipo=="S"]="SA"
 full_table$target = as.numeric(as.factor(full_table$Tipo))-1
 
 # clean "Estado" variable
-
-length(table(full_table$Estado))
-
 full_table$Estado[full_table$Estado=="Veracruz"]="Veracruz de Ignacio de la Llave"
 full_table$Estado[full_table$Estado=="Michoacán"]="Michoacán de Ocampo"
 full_table$Estado[full_table$Estado=="AGS"]="Aguascalientes"
@@ -51,7 +47,9 @@ full_table$Estado[full_table$Estado=="Coahuila"]="Coahuila de Zaragoza"
 # make dummy variables from "Estado"
 dummies_matrix = dummy(full_table$Estado,sep="_")
 
-### build model training data table
+############ build features from short description (text)
+
+# this is done including text from unlabeled examples
 
 # tokenize
 it = itoken(full_table$Destino, tokenizer = word_tokenizer,
@@ -88,12 +86,11 @@ labeled_matrix_gasto = labeled_matrix_gasto[total_clean!=0,]
 labels = full_table$target[!is.na(full_table$Tipo)]
 labels = labels[total_clean!=0]
 
-# build XGBoost matrix for training
+########## train model
+
+##### build XGBoost matrix for training
 final_data_matrix = xgb.DMatrix(data = labeled_matrix_gasto,
                                 label = labels)
-
-
-### train model
 
 # set XGBoost parameters
 xgb_params = list("objective" = 'multi:softprob',
@@ -122,19 +119,13 @@ cv_model = xgb.cv(params = xgb_params,
 
 #print(difftime(Sys.time(), t1, units = 'mins'))
 
-# Out Of Fold prediction
-OOF_prediction = cv_model$pred
-OOF_prediction = max.col(OOF_prediction)-1
-
-true_labels = labels
-
 # confusion matrix and error metrics
-confusion_matrix = confusionMatrix(factor(true_labels ), 
-                                   factor(OOF_prediction),
-                                   mode = "everything")
+confusion_matrix = xgb_confusion(cv_model,labels)
 
+# print confusion matrix and error mertics
 confusion_matrix
 
+# save all relevant accuracay evaluation info. as a list
 cvresults = list(cv_model=cv_model,
                  confusion_matrix=confusion_matrix,
                  true_labels=true_labels,
@@ -143,10 +134,12 @@ cvresults = list(cv_model=cv_model,
 
 save(cvresults,file='./models/xgboost_model_cvresults_v8.model')
 
-
-
-# save full model and calculate var importance
-
+# train final model on full data
 xgboost_model_v8 <- xgb.train(data=final_data_matrix, xgb_params, nrounds=nround)
 
+# save model
 xgb.save(xgboost_model_v8,'./models/xgboost_model_v8.model')
+
+# view variable importance
+importance <- xgb.importance(feature_names = labeled_matrix_gasto@Dimnames[[2]], model = xgboost_model_v8)
+View(importance)

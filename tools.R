@@ -2,6 +2,19 @@
 # load packages
 library("tidyverse")
 
+# XGBoost confusion matrix based on the caret package
+xgb_confusion = function(xgb.cv_model,true_labels)
+{
+  # Out Of Fold prediction
+  OOF_prediction = max.col(xgb.cv_model$pred)-1
+  
+  # confusion matrix and error metrics
+  confusion_matrix = confusionMatrix(factor(true_labels ), 
+                                     factor(OOF_prediction),
+                                     mode = "everything")
+  return(confusion_matrix)
+}
+
 # shuffle a data frame row-wise
 shuffle_df = function(df,seed=NULL)
 {
@@ -21,7 +34,7 @@ shuffle_df = function(df,seed=NULL)
   return(output_list)
 }
 
-# given a feature anlabels array
+# given a an array of class labels
 # calculates weights based on class proportions
 # or with thresholds and values specified by the user
 calculate_weights = function(in_labels,thresholds=NULL,weights=NULL)

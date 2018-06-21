@@ -43,8 +43,6 @@ full_table = full_table %>% filter(complete.cases(.))
 # read only sheet for 2016
 sheet = read_excel("./data/presupuesto 2017.xlsx",sheet=1) 
 
-head(sheet)
-
 # data table has a bad row as names delete first row and select only columns we want
 sheet = sheet %>% select(Folio,Destino,Estado,Total)
 
