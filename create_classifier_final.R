@@ -5,7 +5,6 @@ library("tidyverse")
 library("purrrlyr")
 library("text2vec")
 library("qdap")
-library("skmeans")
 library("slam")
 library("xgboost")
 library("caret")
@@ -38,10 +37,10 @@ full_table$target = as.numeric(as.factor(full_table$Tipo))-1
 
 # clean "Estado" variable
 full_table$Estado[full_table$Estado=="Veracruz"]="Veracruz de Ignacio de la Llave"
-full_table$Estado[full_table$Estado=="Michoac·n"]="Michoac·n de Ocampo"
+full_table$Estado[full_table$Estado=="Michoac√°n"]="Michoac√°n de Ocampo"
 full_table$Estado[full_table$Estado=="AGS"]="Aguascalientes"
 full_table$Estado[full_table$Estado=="Quintana Roo."]="Quintana Roo"
-full_table$Estado[full_table$Estado=="Distrito Federal"]="Ciudad de MÈxico"
+full_table$Estado[full_table$Estado=="Distrito Federal"]="Ciudad de M√©xico"
 full_table$Estado[full_table$Estado=="Coahuila"]="Coahuila de Zaragoza"
 
 # make dummy variables from "Estado"
