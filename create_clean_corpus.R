@@ -14,9 +14,10 @@ sheet = read_excel("./data/2011-2016 todo 11_10_UKPF cities.xlsx",sheet=sheets[1
 
 # no olvidar cambiar nombres de campos
 # Entidad -> Estado
-# FOLIO -> Folio
+# FOLIO/Clave de Proyecto -> Folio
 # Presupuesto -> Total
 # Nombre de Proyecto -> Destino
+# Tipo de gasto -> Tipo
 
 # select only our variables of interest (textid, description, class)
 full_table = sheet %>% select(Folio,Destino,Estado,Total,Tipo)
@@ -62,7 +63,7 @@ corpus = tm_map(corpus, removeNumbers)
 corpus = tm_map(corpus, removePunctuation)
 corpus = tm_map(corpus, stripWhitespace)
 
-# make all messages completely lowercase
+# make all messages completely lowercase (use ASCII//TRANSLIT for Windows and UTF8 for Mac/Linux)
 full_table$Destino = iconv(get("content", corpus), to='ASCII//TRANSLIT')
 
 # save as RData
