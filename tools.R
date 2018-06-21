@@ -16,7 +16,7 @@ xgb_confusion = function(xgb.cv_model,true_labels)
 }
 
 # XGBoost hyperparameter grid search
-xgb_gridsearch = function(niter=1000,
+xgb_gridsearch = function(niters=1000,
                           cv.nround = 500,
                           cv.nfold = 10,
                           seed=NULL,
