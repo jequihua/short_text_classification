@@ -15,6 +15,79 @@ xgb_confusion = function(xgb.cv_model,true_labels)
   return(confusion_matrix)
 }
 
+# XGBoost hyperparameter grid search
+xgb_gridsearch = function(niter=1000,
+                          cv.nround = 500,
+                          cv.nfold = 10,
+                          seed=NULL,
+                          objective="multi:softprob",
+                          eval_metric = "mlogloss",
+                          num_class = NULL,
+                          max_depth_lims = c(2,10),
+                          eta_lims = c(0.01,0.3),
+                          gamma_lims = c(0.0,0.2), 
+                          subsample_lims = c(0.6,0.9),
+                          colsample_bytree_lims = c(0.5,0.8), 
+                          min_child_weight_lims = c(1,40),
+                          max_delta_step_lims = c(1:10)){
+  # initialize lists
+  params_list = list()
+  cv_run_list = list()
+  eval_metric_list = list()
+  eval_metric_list_idx = list()
+  seed_number_list = list()
+  
+  for (iter in 1:niters) {
+    
+    param = list(objective = objective,
+                 eval_metric = eval_metric,
+                 num_class = num_class,
+                 max_depth = sample(max_depth_lims[1]:max_depth_lims[2], 1),
+                 eta = runif(1, .01, 0.3),
+                 gamma = runif(1,eta_lims[1],eta_lims[2]), 
+                 subsample = runif(1,subsample_lims[1],subsample_lims[2]),
+                 colsample_bytree = runif(1,colsample_bytree_lims[1],colsample_bytree_lims[2]), 
+                 min_child_weight = sample(min_child_weight_lims[1]:min_child_weight_lims[2], 1),
+                 max_delta_step = sample(max_delta_step_lims[1]:max_delta_step_lims[2], 1))
+
+    if (!is.null(seed))
+    {
+      seed = sample.int(10000, 1)[[1]]
+    }
+    
+    set.seed(seed)
+    
+    mdcv = xgb.cv(data=final_data_matrix ,
+                  params = param, 
+                  nfold=cv.nfold,
+                  nrounds=cv.nround,
+                  verbose = FALSE,
+                  early_stopping_rounds=10,
+                  maximize=FALSE,
+                  prediction = FALSE)
+    
+    min_logloss = min(mdcv$evaluation_log$train_mlogloss_mean)
+    
+    min_logloss_index = which.min(mdcv$evaluation_log$train_mlogloss_mean)
+    
+    # populate lists
+    params_list[[iter]] = param
+    cv_run_list[[iter]] = mdcv
+    eval_metric_list[[iter]] = min_logloss
+    eval_metric_list_idx[[iter]] = min_logloss_index
+    seed_number_list[[iter]] = seed
+    
+  }
+  
+  final_list = list(params_list=params_list,
+                    cv_run_list=cv_run_list,
+                    eval_metric_list=eval_metric_list,
+                    eval_metric_list_idx=eval_metric_list_idx,
+                    seed_number_list=seed_number_list)
+  
+  return(final_list)
+  }
+
 # shuffle a data frame row-wise
 shuffle_df = function(df,seed=NULL)
 {
