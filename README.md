@@ -48,12 +48,12 @@ First, the "type" variable has some typos that must be corrected:
 
 Second, the "state" variable shows some differences that also need to be corrected:
 
-"Veracruz" -> "Veracruz de Ignacio de la Llave"
-"Michoacán" -> "Michoacán de Ocampo"
-"AGS" -> "Aguascalientes"
-"Quintana Roo." -> "Quintana Roo"
-"Distrito Federal" -> "Ciudad de México"
-"Coahuila" -> "Coahuila de Zaragoza"
+* "Veracruz" -> "Veracruz de Ignacio de la Llave"
+* "Michoacán" -> "Michoacán de Ocampo"
+* "AGS" -> "Aguascalientes"
+* "Quintana Roo." -> "Quintana Roo"
+* "Distrito Federal" -> "Ciudad de México"
+* "Coahuila" -> "Coahuila de Zaragoza"
 
 Then the "state" variable is transformed into a set of 32 dummy variables to be able to enter the XGBoost model.
 
